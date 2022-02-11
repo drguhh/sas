@@ -822,3 +822,24 @@ const letterStyle = {
     justifyContent: "center",
     alignItems: "center",
 }
+
+function getSquares() {
+     var text = ""
+     for (var i = 0; i < store.currentRowIndex; i++) {
+          for (var j = 0; j < 5; j++) {
+              if (store.lines[i][j].result == "absent") {
+                  text += store.squares.white
+              } else if (store.lines[i][j].result == "present") {
+                  text += store.squares.yellow
+              } else if (store.lines[i][j].result == "correct") {
+                  text += store.squares.green
+              } else {
+                  continue
+              }
+          }
+          text += "\n"
+     }
+
+     setStore({ latestGraph: text })
+     return text
+}
