@@ -1,0 +1,824 @@
+import { createStore } from "https://framer.com/m/framer/store.js@^1.0.0"
+import { md5 } from "https://cdn.skypack.dev/pure-md5"
+import { _ } from "https://cdn.skypack.dev/lodash"
+import { Data } from "framer"
+import { allWords } from "https://assets.codepen.io/1581715/fivewords.js"
+
+export const globalStore = createStore({
+    background: "#0099FF",
+    darkMode: true,
+    squares: {
+        green: "🟩",
+        yellow: "🟨",
+        white: "⬜",
+    },
+    lines: [
+        [
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+        ],
+        [
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+        ],
+        [
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+        ],
+        [
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+        ],
+        [
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+        ],
+        [
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+            { letter: "", skipAnim: false, result: "none" },
+        ],
+    ],
+    blocksAnimated: [
+        [false, false, false, false, false],
+        [false, false, false, false, false],
+        [false, false, false, false, false],
+        [false, false, false, false, false],
+        [false, false, false, false, false],
+        [false, false, false, false, false],
+    ],
+    skipAnim: false,
+    currentRowIndex: 0,
+    currentWord: "",
+    currentColumnIndex: 0,
+    wrongWord: false,
+    victory: false,
+    usedLetters: {},
+    latestGraph: "",
+})
+
+function BlockObject({ text, index, rowIndex }) {
+        const [value, setValue] = React.useState(0)
+        const [scaleValue, setScaleValue] = React.useState(1.0)
+        const getBGColor = () => {
+            if (text.result == "absent") {
+                return colors.absent
+            } else if (text.result == "present") {
+                return colors.present
+            } else if (text.result == "correct") {
+                return colors.correct
+            } else {
+                return colors.none
+            }
+        }
+        const [bg, setBg] = React.useState(
+            store.blocksAnimated[rowIndex][index] == true
+                ? getBGColor()
+                : colors.none
+        )
+        let r = useMotionValue(0)
+        var ref = useRef()
+
+        const startAnim = () => {
+            r.set(0)
+            let start = 0
+            let end = -90
+
+            let controls = animate(start, end, {
+                duration: 0.25,
+                ease: "easeIn",
+                delay: 0.5 * index,
+                onUpdate: (v) => {
+                    setValue(v)
+                    if (Math.abs(v) >= 90) {
+                        setBg(getBGColor())
+                    }
+                },
+                onComplete: () => {
+                    start = -90
+                    end = 0
+                    animate(start, end, {
+                        duration: 0.25,
+                        ease: "easeIn",
+                        delay: 0.1,
+                        onUpdate: (v) => {
+                            setValue(v)
+                        },
+                        onComplete: () => {
+                            //console.log(v)
+                            controls.stop()
+                            setValue(0)
+                        },
+                    })
+                },
+            })
+        }
+
+        const startAnimScale = () => {
+            let start = 1.0
+            let end = 1.05
+
+            let scaleControls = animate(start, end, {
+                duration: 0.15,
+                ease: "circOut",
+                delay: 0.0,
+                onUpdate: (v) => {
+                    setScaleValue(v)
+                },
+                onComplete: () => {
+                    start = 1.05
+                    end = 1.0
+                    animate(start, end, {
+                        duration: 0.15,
+                        ease: "circOut",
+                        delay: 0.0,
+                        onUpdate: (v) => {
+                            setScaleValue(v)
+                        },
+                        onComplete: () => {
+                            scaleControls.stop()
+                            setScaleValue(1.0)
+                        },
+                    })
+                },
+            })
+        }
+
+        const onTap = () => {}
+
+        if (text.result != "none" && text.letter != "") {
+            if (store.blocksAnimated[rowIndex][index] == false) {
+                var _blocksAnimated = store.blocksAnimated
+                _blocksAnimated[rowIndex][index] = true
+                setStore({ blocksAnimated: _blocksAnimated })
+                startAnim()
+            }
+        }
+
+        useEffect(() => {
+            if (
+                text.letter != "" &&
+                index == store.currentColumnIndex - 1 &&
+                store.skipAnim == false &&
+                rowIndex == store.currentRowIndex
+            ) {
+                startAnimScale()
+            }
+        }, [])
+
+        var _fill = text.letter == "" ? {} : filled
+        var styles = {
+            ...squareStyle,
+            ...{
+                transform:
+                    "rotateX(" + value + "deg) scale(" + scaleValue + ")",
+                backgroundColor: bg,
+            },
+            ..._fill,
+        }
+
+        return (
+            <motion.div
+                ref={ref}
+                className={"tile"}
+                style={styles}
+                onTap={onTap}
+            >
+                <style>{css}</style>
+                {text.letter.toUpperCase()}
+            </motion.div>
+        )
+    }
+
+const squareStyle = {
+    margin: 0,
+    padding: 0,
+    color: "white",
+    fontWeight: 600,
+    borderRadius: 0,
+    borderColor: "#cdcdcd",
+    borderSize: "1px",
+    border: "1px solid rgb(131, 131, 131)",
+    backgroundColor: "#383838",
+    whiteSpace: "pre-wrap" as const,
+    flexShrink: 0,
+    width: "100%",
+    transformOrigin: "center",
+    display: "inline-flex",
+    justifyContent: "center",
+    alignItems: "center",
+    fontSize: 42,
+    maxWidth: 70,
+}
+
+const filled = {
+    border: "1px solid #fff",
+}
+// Block Row
+    function BlockRow({ rowData, rowIndex }) {
+        return (
+            <motion.div
+                style={{
+                    ...style,
+                    ...containerStyle,
+                    ...{ x: store.currentRowIndex == rowIndex ? valueX : 0 },
+                }}
+            >
+                {rowData.map((item, index) => (
+                    <BlockObject
+                        text={item}
+                        index={index}
+                        rowIndex={rowIndex}
+                    />
+                ))}
+            </motion.div>
+        )
+    }
+
+const containerStyle = {
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "shown",
+    display: "flex",
+    gridTemplateColumns: "repeat(5, 1fr)",
+    gridGap: "15px",
+    width: "100%",
+    //width: "500px",
+    justifyItems: "center",
+}
+
+<motion.div style={{ ...masterParentContainer }} className={"masterParent"}>
+         <motion.div style={{ ...masterContainer }}>
+            <style>{globalCss}</style>
+            {store.lines.map((item, index) => (
+               <BlockRow rowData={item} rowIndex={index} />
+             ))}
+         </motion.div>
+ </motion.div>
+
+const masterParentContainer = {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    flexGrow: 1,
+    overflow: "hidden",
+}
+
+const shakeX = {
+    animationName: "shakeX",
+}
+
+const masterContainer = {
+    display: "grid",
+    gridTemplateRows: "repeat(6, 1fr)",
+    gridGap: "12px",
+    padding: 10,
+    justifyContent: "center",
+}
+
+const css = `.tile::before {
+    content: '';
+    display: inline-block;
+    padding-bottom: 100%;
+}`
+import { addPropertyControls, ControlType } from "framer"
+import { motion } from "framer-motion"
+import React from "react"
+import { useRef, useEffect } from "react"
+import { globalStore, checkWord } from "./globals.ts"
+
+// Learn more: https://www.framer.com/docs/guides/code-components/
+
+export default function Keyboard(props) {
+    const { text, style } = props
+    const [store, setStore] = globalStore()
+    const [usedLetters, setUsedLetters] = React.useState(store.usedLetters)
+    var keys = [
+        ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+
+        ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+
+        ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "DELETE"],
+    ]
+    const colors = {
+        correct: "#6AAA64",
+        present: "#C9B458",
+        absent: "#777C7E",
+        none: "#383838",
+    }
+
+    const getBGColor = (key) => {
+        var usedKey = store.usedLetters[key]
+        if (usedKey != undefined) {
+            if (usedKey == "absent") {
+                return colors.absent
+            } else if (usedKey == "present") {
+                return colors.present
+            } else if (usedKey == "correct") {
+                return colors.correct
+            } else {
+                return "#cdcdcd"
+            }
+        } else {
+            return "#cdcdcd"
+        }
+    }
+
+    const joinWord = (arr) => {
+        var word = ""
+        arr.forEach((item) => {
+            word += item.letter
+        })
+
+        return word
+    }
+
+    useEffect(() => {
+        setUsedLetters(store.usedLetters)
+    }, [store.usedLetters])
+
+    function Key({ letter }) {
+        var ref = useRef()
+        const [letterValue, setLetter] = React.useState(letter)
+        const onTap = () => {
+            // guard
+            if (
+                store.currentColumnIndex >= 5 &&
+                letter != "DELETE" &&
+                letter != "ENTER"
+            ) {
+                return
+            }
+
+            var _lines = store.lines
+            var column = store.currentColumnIndex
+            var skipAnim = false
+
+            if (letter == "ENTER" && store.currentColumnIndex == 5) {
+                var result = checkWord(
+                    joinWord(store.lines[store.currentRowIndex]),
+                    store.currentWord
+                )
+
+                if (result.valid == false) {
+                    setStore({ wrongWord: true, skipAnim: true })
+                } else {
+                    var _usedLetters = usedLetters
+                    for (var i = 0; i < 5; i++) {
+                        var _letter = result["lines"][i]["letter"]
+                        _usedLetters[_letter] = result["lines"][i]["result"]
+                    }
+                    
+                    setStore({ usedLetters: _usedLetters })
+
+                    // if we are on final row and the game hasn't been won
+                    if (
+                        result["won"] == false &&
+                        store.currentRowIndex == store.lines.length
+                    ) {
+                        console.log("game over")
+                    } else {
+                        _lines[store.currentRowIndex] = result["lines"]
+                        setStore({
+                            lines: _lines,
+                            currentRowIndex: store.currentRowIndex + 1,
+                            currentColumnIndex: 0,
+                        })
+
+                        if (result["won"] == true) {
+                            setTimeout(() => {
+                                setStore({
+                                    victory: result["won"],
+                                })
+                            }, 2600)
+                        }
+                    }
+                }
+
+                return
+            }
+
+            if (letter == "DELETE") {
+                if (column == 0) {
+                    return
+                }
+                _lines[store.currentRowIndex][store.currentColumnIndex - 1] = {
+                    letter: "",
+                    skipAnim: true,
+                    result: "none",
+                }
+                skipAnim = true
+                column = column - 1
+            } else {
+                _lines[store.currentRowIndex][store.currentColumnIndex] = {
+                    letter: letter,
+                    skipAnim: false,
+                    result: "none",
+                }
+                skipAnim = false
+                column = column + 1
+            }
+            setStore({
+                lines: _lines,
+                currentColumnIndex: column,
+                skipAnim: skipAnim,
+                wrongWord: false,
+            })
+        }
+
+        var extra =
+            letter == "ENTER" || letter == "DELETE" ? one_and_a_half : {}
+        var styles = {
+            ...letterStyle,
+            ...extra,
+            ...{ backgroundColor: getBGColor(letter.toLowerCase()) },
+        }
+
+        return letter != "DELETE" ? (
+            <motion.div
+                ref={ref}
+                className={"tile"}
+                style={styles}
+                onTap={onTap}
+                whileTap={{ scale: 0.8 }}
+            >
+                {letter}
+            </motion.div>
+        ) : (
+            <motion.div
+                ref={ref}
+                className={"tile"}
+                style={styles}
+                onTap={onTap}
+                whileTap={{ scale: 0.8 }}
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    width="24"
+                >
+                    <path
+                        fill="var(--color-tone-1)"
+                        d="M22 3H7c-.69 0-1.23.35-1.59.88L0 12l5.41 8.11c.36.53.9.89 1.59.89h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H7.07L2.4 12l4.66-7H22v14zm-11.59-2L14 13.41 17.59 17 19 15.59 15.41 12 19 8.41 17.59 7 14 10.59 10.41 7 9 8.41 12.59 12 9 15.59z"
+                    ></path>
+                </svg>
+            </motion.div>
+        )
+    }
+
+    return (
+        <motion.div style={{ ...style, ...containerStyle }}>
+            <motion.div style={{ ...row }}>
+                {keys[0].map((item) => (
+                    <Key letter={item} />
+                ))}
+            </motion.div>
+            <motion.div style={{ ...row }}>
+                <motion.div style={{ ...half }} />
+                {keys[1].map((item) => (
+                    <Key letter={item} />
+                ))}
+                <motion.div style={{ ...half }} />
+            </motion.div>
+            <motion.div style={{ ...row }}>
+                {keys[2].map((item) => (
+                    <Key letter={item} />
+                ))}
+            </motion.div>
+        </motion.div>
+    )
+}
+
+Keyboard.defaultProps = {
+    text: "Tap",
+}
+
+// Learn More: https://www.framer.com/docs/property-controls/
+addPropertyControls(Keyboard, {
+    text: {
+        title: "Text",
+        type: ControlType.String,
+    },
+})
+
+const containerStyle = {
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+
+    margin: "0 auto",
+}
+
+const half = {
+    flex: 0.5,
+}
+
+const one_and_a_half = {
+    flex: 1.5,
+    fontSize: "16px",
+}
+
+const row = {
+    display: "flex",
+    width: "100%",
+    margin: "0 auto 8px",
+    touchAction: "manipulation",
+}
+
+const letterStyle = {
+    fontFamily: "inherit",
+    border: 0,
+    margin: "0 6px 0 0",
+    height: "58px",
+    borderRadius: "4px",
+    cursor: "pointer",
+    fontSize: "20px",
+
+    color: "black",
+    flex: 1,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+}
+import { addPropertyControls, ControlType } from "framer"
+import { motion } from "framer-motion"
+import React from "react"
+import { useRef, useEffect } from "react"
+import { globalStore, checkWord } from "./globals.ts"
+
+// Learn more: https://www.framer.com/docs/guides/code-components/
+
+export default function Keyboard(props) {
+    const { text, style } = props
+    const [store, setStore] = globalStore()
+    const [usedLetters, setUsedLetters] = React.useState(store.usedLetters)
+    var keys = [
+        ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+
+        ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+
+        ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "DELETE"],
+    ]
+    const colors = {
+        correct: "#6AAA64",
+        present: "#C9B458",
+        absent: "#777C7E",
+        none: "#383838",
+    }
+
+    const getBGColor = (key) => {
+        var usedKey = store.usedLetters[key]
+        if (usedKey != undefined) {
+            if (usedKey == "absent") {
+                return colors.absent
+            } else if (usedKey == "present") {
+                return colors.present
+            } else if (usedKey == "correct") {
+                return colors.correct
+            } else {
+                return "#cdcdcd"
+            }
+        } else {
+            return "#cdcdcd"
+        }
+    }
+
+    const joinWord = (arr) => {
+        var word = ""
+        arr.forEach((item) => {
+            word += item.letter
+        })
+
+        return word
+    }
+
+    useEffect(() => {
+        setUsedLetters(store.usedLetters)
+    }, [store.usedLetters])
+
+    function Key({ letter }) {
+        var ref = useRef()
+        const [letterValue, setLetter] = React.useState(letter)
+        const onTap = () => {
+            // guard
+            if (
+                store.currentColumnIndex >= 5 &&
+                letter != "DELETE" &&
+                letter != "ENTER"
+            ) {
+                return
+            }
+
+            var _lines = store.lines
+            var column = store.currentColumnIndex
+            var skipAnim = false
+
+            if (letter == "ENTER" && store.currentColumnIndex == 5) {
+                var result = checkWord(
+                    joinWord(store.lines[store.currentRowIndex]),
+                    store.currentWord
+                )
+
+                if (result.valid == false) {
+                    setStore({ wrongWord: true, skipAnim: true })
+                } else {
+                    var _usedLetters = usedLetters
+                    for (var i = 0; i < 5; i++) {
+                        var _letter = result["lines"][i]["letter"]
+                        _usedLetters[_letter] = result["lines"][i]["result"]
+                    }
+                    
+                    setStore({ usedLetters: _usedLetters })
+
+                    // if we are on final row and the game hasn't been won
+                    if (
+                        result["won"] == false &&
+                        store.currentRowIndex == store.lines.length
+                    ) {
+                        console.log("game over")
+                    } else {
+                        _lines[store.currentRowIndex] = result["lines"]
+                        setStore({
+                            lines: _lines,
+                            currentRowIndex: store.currentRowIndex + 1,
+                            currentColumnIndex: 0,
+                        })
+
+                        if (result["won"] == true) {
+                            setTimeout(() => {
+                                setStore({
+                                    victory: result["won"],
+                                })
+                            }, 2600)
+                        }
+                    }
+                }
+
+                return
+            }
+
+            if (letter == "DELETE") {
+                if (column == 0) {
+                    return
+                }
+                _lines[store.currentRowIndex][store.currentColumnIndex - 1] = {
+                    letter: "",
+                    skipAnim: true,
+                    result: "none",
+                }
+                skipAnim = true
+                column = column - 1
+            } else {
+                _lines[store.currentRowIndex][store.currentColumnIndex] = {
+                    letter: letter,
+                    skipAnim: false,
+                    result: "none",
+                }
+                skipAnim = false
+                column = column + 1
+            }
+            setStore({
+                lines: _lines,
+                currentColumnIndex: column,
+                skipAnim: skipAnim,
+                wrongWord: false,
+            })
+        }
+
+        var extra =
+            letter == "ENTER" || letter == "DELETE" ? one_and_a_half : {}
+        var styles = {
+            ...letterStyle,
+            ...extra,
+            ...{ backgroundColor: getBGColor(letter.toLowerCase()) },
+        }
+
+        return letter != "DELETE" ? (
+            <motion.div
+                ref={ref}
+                className={"tile"}
+                style={styles}
+                onTap={onTap}
+                whileTap={{ scale: 0.8 }}
+            >
+                {letter}
+            </motion.div>
+        ) : (
+            <motion.div
+                ref={ref}
+                className={"tile"}
+                style={styles}
+                onTap={onTap}
+                whileTap={{ scale: 0.8 }}
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    width="24"
+                >
+                    <path
+                        fill="var(--color-tone-1)"
+                        d="M22 3H7c-.69 0-1.23.35-1.59.88L0 12l5.41 8.11c.36.53.9.89 1.59.89h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H7.07L2.4 12l4.66-7H22v14zm-11.59-2L14 13.41 17.59 17 19 15.59 15.41 12 19 8.41 17.59 7 14 10.59 10.41 7 9 8.41 12.59 12 9 15.59z"
+                    ></path>
+                </svg>
+            </motion.div>
+        )
+    }
+
+    return (
+        <motion.div style={{ ...style, ...containerStyle }}>
+            <motion.div style={{ ...row }}>
+                {keys[0].map((item) => (
+                    <Key letter={item} />
+                ))}
+            </motion.div>
+            <motion.div style={{ ...row }}>
+                <motion.div style={{ ...half }} />
+                {keys[1].map((item) => (
+                    <Key letter={item} />
+                ))}
+                <motion.div style={{ ...half }} />
+            </motion.div>
+            <motion.div style={{ ...row }}>
+                {keys[2].map((item) => (
+                    <Key letter={item} />
+                ))}
+            </motion.div>
+        </motion.div>
+    )
+}
+
+Keyboard.defaultProps = {
+    text: "Tap",
+}
+
+// Learn More: https://www.framer.com/docs/property-controls/
+addPropertyControls(Keyboard, {
+    text: {
+        title: "Text",
+        type: ControlType.String,
+    },
+})
+
+const containerStyle = {
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+
+    margin: "0 auto",
+}
+
+const half = {
+    flex: 0.5,
+}
+
+const one_and_a_half = {
+    flex: 1.5,
+    fontSize: "16px",
+}
+
+const row = {
+    display: "flex",
+    width: "100%",
+    margin: "0 auto 8px",
+    touchAction: "manipulation",
+}
+
+const letterStyle = {
+    fontFamily: "inherit",
+    border: 0,
+    margin: "0 6px 0 0",
+    height: "58px",
+    borderRadius: "4px",
+    cursor: "pointer",
+    fontSize: "20px",
+
+    color: "black",
+    flex: 1,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+}
